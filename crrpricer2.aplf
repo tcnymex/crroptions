@@ -1,0 +1,49 @@
+ crrpricer2←{
+⍝ return CRR value of an American or European option
+⍝ Euro redundant to closed form Euro Black Scholes, but useful for futures & calibrating volatility smiles tables
+
+⍝ ⍺[1]←1 for American exercise, 0 for European Exercise
+⍝ ⍺[2] put/call ¯1=put, +1=call
+
+⍝ ⍵[1]= strike, ⍵[2]=spotprice
+⍝ ⍵[3]=expiry in years, 1 month=12÷year←365.25 or 12÷year←12×21 (21=tradingdays per month)
+⍝ ⍵[4]=annualized volatility, 35 percent =0.35
+⍝ ⍵[5]=NUMBER of timesteps N.B. root=timestep zero, so tree with 6 end leaves has 5 timesteps
+⍝ ⍵[6]=irate, 5%/yr=0.05
+⍝ ⍵[7]=optional (for stock) annual dividend rate
+⍝ MANDITORY THAT ⍵[6]=⍵[7] FOR FUTURES
+
+     isAmer PutCall←⍺
+     strike spot expiry vol timesteps irate divrate←7↑⍵
+
+     ⎕IO←1                                  ⍝ I've 5 fingers, not 4 fingers and zeroeth thumb
+
+     mask←(⍳1+timesteps)∘.≤⍳1+timesteps    ⍝ mask has 1s for valid nodes, 0s for invalid below diagonal
+
+     trees←crrtree2 ⍵   ⍝ treeS[1;;]=prices, [2;;]=prob 1 single path hits node, [3;;]=sum of prob each individual path hits node
+
+⍝ disc∆t←÷*irate×expiry÷timesteps      ⍝ present val of $1 1∆t in future
+     disc∆t←÷1+irate×expiry÷timesteps       ⍝ should be EXACTLY same as above, but small diff
+
+     Pu Pd←2↑trees[3;;2]                    ⍝ prob up and down jumps
+     prctree←(↓[1]mask)/¨↓[1]trees[1;;]     ⍝ trimmed nested VectorOfVectors of price tree
+     intrinsic←0⌈PutCall×prctree-|strike    ⍝ in the money amount at each node
+
+     {(⍺×isAmer)⌈disc∆t×(Pu,Pd)+.×0 ¯1↓0 1⌽⍵,[0.5]⍵}/intrinsic ⍝ THE BIG FOLD FROM THE RIGHT
+⍝ 0k, wrote the above as a joke to prove i can write as cryptic a line of APL as anyone else.
+⍝ IN PRODUCTION CODE I'd write "foo/intrinsics" while defining "foo" as below
+
+⍝ foo←{
+⍝ ⍝ whats going on with that reduction above
+⍝ ⍝ ⍺="current i.e " now's " intrinsics, ⍵=intrinscs 1∆t forward in time
+
+⍝ intrinsics←0 ¯1↓ 0 1 ⌽ ⍵,[0.5]⍵ ⍝ intrinsic 1∆t ahead [1;]=intrinsic if upjump, [2;]=intrinsic if downjump
+⍝ expval←(Pu,Pd)+.×intrinsics     ⍝ expval=(ProbUpJump×upIntrinsics)+(ProbDownJump×downIntrinsics)
+⍝ discval←disc∆t×expval           ⍝ discval=discounted expval to "now" of intrinsics[1∆t ahead]
+
+⍝ result← (⍺×isAmer)⌈discval      ⍝ IsAmer×MAX(intrinsic "now" vs expval intrinsic 1∆t ahead)
+⍝                                 ⍝ if isAmer=0, makes now's intrinsics=0, equivalent to European exercise
+
+⍝ ⎕←result
+⍝ }
+ }

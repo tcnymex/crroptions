@@ -1,0 +1,5 @@
+ pascal←{⍝ returns ⍵ lines pof pascals triangle
+            ⍝ this is an edit that should be reflected
+     ⎕IO←0
+     ⍉(⍳⍵)∘.!⍳⍵
+ }

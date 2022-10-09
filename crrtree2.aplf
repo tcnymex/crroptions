@@ -1,0 +1,36 @@
+ crrtree2←{
+⍝ why separate crr tree generation from crr pricing?
+⍝ cuz sometimes you just want to pathwise monte carlo through a crr tree not backwards loop over it
+⍝ so break tree generation out from traditional crr pricing
+
+⍝ ⍵[1]=strike, ⍵[2]=spotprice,
+⍝ ⍵[3]=expiry in years, 1 month=12÷365.25 or 12÷tradingdays←12×21
+⍝ ⍵[4]=annualized volatility, 21%/yr would = 0.21
+⍝ ⍵[5]=NUMBER of timesteps N.B. root=timestep zero, so tree with 6 end leaves has 5 timesteps
+⍝ ⍵[6]=irate, 5%/yr would = 0.05
+⍝ ⍵[7]=optional (for stock) annual dividend rate
+⍝ MANDITORY THAT ⍵[6]=⍵[7] FOR OPTIONS ON FUTURES
+
+⍝ result[1;;] is stock price at node, result[2;;] prob ANY SINGLE PATH reaching node
+⍝ result[3;;] total prob reaching node = (prob SINGLE PATH)×(NUMB PATHS=Pascals triangle)
+
+     spot expiry vol timesteps irate divrate←1↓7↑⍵ ⍝ 1↓ as trees dont need strike arg of option pricer ⍵
+     ⎕IO←1                             ⍝ I've 5 fingers, not 4 fingers and zeroeth thumb
+
+     mask←(⍳1+timesteps)∘.≤⍳1+timesteps⍝ "mask×" will be used to zero out tree below diagonal
+
+     u←*vol×(∆t←expiry÷timesteps)*0.5  ⍝ multiplicative size up jump
+     d←*-vol×∆t*0.5                    ⍝ multiplicative size down jump, also = 1÷u
+
+     uppowers←mask×¯1++\mask           ⍝ numb up jumps to reach a node, ¯1+ sets tree root to zero jumps
+     downpowers←mask×|uppowers-[2]¯1+⍳1+timesteps ⍝ numb down jumps to get to node
+
+     prices←mask×spot×(u*uppowers)×d*downpowers ⍝ prices at node through time.
+⍝                                          ⍝ yep, this couldve been a tacit fork with some ⊢s, ⊣s, and ⍨s
+⍝                                          ⍝ I DONT CARE, CLARITY OVER CODE GOLF
+
+     Pd←1-Pu←((*∆t×irate-divrate)-d)÷u-d        ⍝ Pu=up probability, Pd=down probability
+     P1Path←mask×(Pu*uppowers)×Pd*downpowers    ⍝ probability ANY ONE SINGLE path hits node
+     PAnyPath←mask×P1Path×⍉pascal timesteps+1   ⍝ probability ANYofALL paths hits node
+     ↑prices P1Path PAnyPath                  ⍝ result = rank 3 flat array ⍴=(3,(1+timesstep),1+timestep)
+ }
