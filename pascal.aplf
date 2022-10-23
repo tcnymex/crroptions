@@ -1,5 +1,5 @@
  pascal←{⍝ returns ⍵ lines pof pascals triangle
-            ⍝ this is an edit that should be reflected
+            ⍝ throws DOMAIN ERROR if called with ⍵ over 1029
      ⎕IO←0
      ⍉(⍳⍵)∘.!⍳⍵
  }
